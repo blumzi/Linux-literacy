@@ -1,0 +1,38 @@
+#!/bin/bash
+PROG=$(basename ${0})
+
+function usage() {
+    cat <<- EOF
+    Usage:
+        ${PROG} <string>
+
+        Looks for all current processes with <string> in their command line
+
+EOF
+}
+
+function search() {
+    local what="${1}"
+
+    cd /proc
+    procs=$( echo [0-9]* )
+
+    for p in ${procs[*]}; do
+        if [ ! -d ${p} ]; then
+            continue
+        fi
+        pushd $p >/dev/null
+        cmd=$(tr '\0' ' ' < cmdline)
+        if [[ "${cmd}" == *last* ]]; then
+            printf "%10s\t%s\n" "${p}" "${cmd}"
+        fi
+        popd >/dev/null
+    done
+}
+
+if (( $# != 1 )); then
+    usage
+    exit 1
+fi
+
+search ${1}
