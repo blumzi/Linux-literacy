@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd /proc
-procs=$( echo [0-9]* )
+readarray procs <<< $( echo [0-9]* | tr ' ' '\n' | sort -n )
 
 for p in ${procs[*]}; do
     pushd $p >/dev/null

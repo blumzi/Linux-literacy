@@ -130,7 +130,7 @@ done
 args=${*}
 
 cd /proc
-procs=$( echo [0-9]* )
+readarray procs <<< $( echo [0-9]* | tr ' ' '\n' | sort -n )
 
 if ${count}; then
     search ${args} | wc -l

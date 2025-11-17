@@ -2,9 +2,10 @@
 
 function search() {
     local what="${1}"
+    local -a procs
 
     cd /proc
-    procs=$( echo [0-9]* )
+    readarray procs <<< $( echo [0-9]* | tr ' ' '\n' | sort -n )
 
     for p in ${procs[*]}; do
         if [ ! -d ${p} ]; then
