@@ -1,0 +1,139 @@
+#!/bin/bash
+PROG=$(basename ${0})
+
+function usage() {
+    cat <<- EOF
+    Usage:
+        ${PROG} [options] <string>
+
+        Options:
+        -c|--count     - Show how many processes there are with <string> in the command line
+        -v|--verbose   - Show more information
+        -h|--help      - Show this message
+        -n|--no-header - Don't print column headers
+        -m|--max <N>   - Show at most <N> entries
+
+        Looks for all current processes with <string> in their command line
+
+EOF
+}
+
+function fatal() {
+    local msg="${*}"
+
+    echo ""
+    echo ">>> Fatal: ${msg}"
+    echo ""
+    usage
+    exit 1
+}
+
+function search() {
+    local what="${1}"
+    local shown=0
+
+    if [ ! "${what}" ]; then
+        fatal "missing search <string>"
+    fi
+
+    if ! ${no_headers}; then
+        if ${verbose}; then
+            printf "%10s\t%7s %7s %7s %s\n" "PID" "PPID" "UID" "GID" "COMMAND"
+            printf "%10s\t%7s %7s %7s %s\n" "---" "----" "---" "---" "-------"
+        else
+            printf "%10s\t%s\n" "PID" "COMMAND"
+            printf "%10s\t%s\n" "---" "------"
+        fi
+    fi
+
+    for p in ${procs[*]}; do
+        if [ ! -d ${p} ]; then
+            continue
+        fi
+        pushd $p >/dev/null
+        cmd=$(tr '\0' ' ' < cmdline)
+        if [[ "${cmd}" == *${what}* ]]; then
+            if ${verbose}; then
+                while read -a word; do
+                    case "${word[0]}" in
+                        "PPid:")
+                            ppid="${word[1]}"
+                            ;;
+                        "Uid:")
+                            uid=${word[1]}
+                            ;;
+                        "Gid:")
+                            gid=${word[1]}
+                            ;;
+                    esac
+                done < status
+
+                printf "%10s\t%7d %7d %7d %s\n" "${p}" "${ppid}" "${uid}" "${gid}" "${cmd}"
+            else
+                printf "%10s\t%s\n" "${p}" "${cmd}"
+            fi
+            (( shown++ ))
+        fi
+        popd >/dev/null
+
+        if [ "${max}" ] && (( ${shown} >= ${max} )); then
+            return
+        fi
+    done
+}
+
+OPTS=$( getopt -o 'chvnm:' --long "count,help,verbose,no-headers,max:" -n "${PROG}" -- "$@" )
+eval set -- "${OPTS}"
+
+verbose=false
+count=false
+no_headers=false
+max=
+
+shopt -s extglob
+while true; do
+    case "${1}" in
+    -m|--max)
+        if [[ "${2}" != +([[:digit:]]) ]] || (( ${2} < 1 )); then
+            fatal "Invalid argument \"${2}\" for -m|--max. Must be a number greater than 1"
+        fi
+        max=$(( ${2} ))
+        shift 2
+        ;;
+
+    -v|--verbose)
+        verbose=true
+        shift 1
+        ;;
+
+    -c|--count)
+        count=true
+        shift 1
+        ;;
+
+    -n|--no-headers)
+        no_headers=true
+        shift 1
+        ;;
+
+    -h|--help)
+        usage
+        exit 0
+        ;;
+
+    --)
+        shift 1
+        break
+        ;;
+    esac
+done
+args=${*}
+
+cd /proc
+readarray procs <<< $( echo [0-9]* | tr ' ' '\n' | sort -n )
+
+if ${count}; then
+    search ${args} | wc -l
+else
+    search ${args}
+fi
