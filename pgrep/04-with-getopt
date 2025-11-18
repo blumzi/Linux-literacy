@@ -54,6 +54,9 @@ function search() {
         cmd=$(tr '\0' ' ' < cmdline)
         if [[ "${cmd}" == *${what}* ]]; then
             if ${verbose}; then
+                #
+                # In vebose mode show parent-proceddid, user and goup IDs as well
+                #
                 while read -a word; do
                     case "${word[0]}" in
                         "PPid:")
