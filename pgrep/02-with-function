@@ -13,7 +13,7 @@ function search() {
         fi
         pushd $p >/dev/null
         cmd=$(tr '\0' ' ' < cmdline)
-        if [[ "${cmd}" == *last* ]]; then
+        if [[ "${cmd}" == *${what}* ]]; then
             echo ${p}: ${cmd}
         fi
         popd >/dev/null
